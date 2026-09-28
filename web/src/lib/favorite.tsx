@@ -34,7 +34,6 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     applyTeamTheme(document.documentElement, favorite);
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', TEAMS[favorite].colors.primary);
   }, [favorite]);
 
   const setFavorite = (t: TeamId) => {

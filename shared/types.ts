@@ -166,8 +166,10 @@ export interface TeamSummary {
 export interface HomePayload {
   generatedAt: string;
   teams: TeamSummary[];
-  /** All Philly games in the next 7 days, sorted by start. */
+  /** All Philly games from the start of today through the next 7 days, sorted by start. */
   week: Game[];
+  /** Completed Philly games from the previous 7 days, sorted by start. */
+  recent: Game[];
 }
 
 export interface TeamPayload {

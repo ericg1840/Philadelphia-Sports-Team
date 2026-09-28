@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { isTeamId, TEAMS } from '../../../shared/teams';
 import type { Sourced, TeamId, TeamPayload } from '../../../shared/types';
-import { cx, PlayoffPill, Skeleton, TeamLogo } from '../components/bits';
+import { Card, cx, PlayoffPill, Skeleton, TeamLogo } from '../components/bits';
 import { DataStatus, SectionNote } from '../components/Status';
 import { BoxScoreView } from '../components/team/BoxScoreView';
 import { ExtrasView } from '../components/team/ExtrasView';
@@ -27,6 +27,7 @@ function TeamView({ team }: { team: TeamId }) {
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') as Tab) ?? 'schedule';
   const d = api.data;
+  const isFav = favorite === team;
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'schedule', label: 'Schedule' },
@@ -37,53 +38,56 @@ function TeamView({ team }: { team: TeamId }) {
 
   const standing = d?.standing.data;
   return (
-    <div style={teamStyle(team)}>
-      <header
-        className="relative -mx-4 -mt-4 mb-4 overflow-hidden px-4 pb-4 pt-4 text-white sm:rounded-b-3xl"
-        style={{
-          background: `linear-gradient(135deg, ${meta.colors.primary}, color-mix(in oklab, ${meta.colors.secondary} 65%, black))`,
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <Link to="/" className="-ml-2 rounded-full p-2 hover:bg-white/10" aria-label="Back">
-            <ArrowLeft size={20} />
+    <div style={teamStyle(team)} className="mx-auto w-full max-w-4xl lg:px-8 lg:py-7">
+      <header className="relative overflow-hidden px-4 pb-5 pt-4 text-white lg:rounded-[20px] lg:px-7 lg:py-6" style={{ background: meta.colors.accent }}>
+        <div className="pointer-events-none absolute -right-8 -top-8 opacity-[0.14]">
+          <TeamLogo team={team} size={220} decorative />
+        </div>
+        <div className="relative flex items-center justify-between">
+          <Link to="/" className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/15" aria-label="Back to dashboard">
+            <ArrowLeft size={22} />
           </Link>
           <button
             onClick={() => setFavorite(team)}
-            className="-mr-2 rounded-full p-2 hover:bg-white/10"
-            aria-label={favorite === team ? 'Favorite team' : 'Make favorite'}
-            title={favorite === team ? 'Favorite team' : 'Make favorite'}
+            className="-mr-2 flex h-11 items-center gap-2 rounded-full px-3 text-sm font-semibold hover:bg-white/15"
+            aria-pressed={isFav}
           >
-            <Star size={20} className={favorite === team ? 'fill-white' : ''} />
+            <Star size={18} className={isFav ? 'fill-white' : ''} aria-hidden />
+            {isFav ? 'Favorite' : 'Make favorite'}
           </button>
         </div>
-        <div className="mt-1 flex items-center gap-3">
-          <div className="rounded-2xl bg-white/90 p-2">
-            <TeamLogo team={team} size={44} />
-          </div>
+        <div className="relative mt-2 flex items-center gap-4">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white">
+            <TeamLogo team={team} size={46} />
+          </span>
           <div className="min-w-0">
-            <h1 className="text-2xl font-extrabold leading-tight">{meta.shortName}</h1>
-            <div className="text-sm text-white/80">
-              {standing ? `${standing.record} · ${standing.summary}` : meta.league}
+            <h1 className="font-display text-3xl font-black leading-tight tracking-tight sm:text-4xl">{meta.shortName}</h1>
+            <div className="text-sm text-white/90">
+              {standing ? `${standing.record} · ${standing.summary}` : meta.name}
               {standing?.points != null ? ` · ${standing.points} pts` : ''}
             </div>
           </div>
         </div>
         {standing?.playoff && (
-          <div className="mt-3">
+          <div className="relative mt-3">
             <PlayoffPill playoff={standing.playoff} onColor />
           </div>
         )}
       </header>
 
-      <nav className="no-scrollbar sticky top-0 z-10 -mx-4 mb-4 flex gap-1 overflow-x-auto bg-zinc-950/90 px-4 py-2 backdrop-blur">
+      <nav
+        aria-label={`${meta.shortName} sections`}
+        className="no-scrollbar sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-line bg-ground/95 px-4 py-2.5 backdrop-blur lg:mt-4 lg:border-0 lg:px-0"
+      >
         {tabs.map((t) => (
           <button
             key={t.id}
+            type="button"
+            aria-current={tab === t.id ? 'page' : undefined}
             onClick={() => setParams(t.id === 'schedule' ? {} : { tab: t.id }, { replace: true })}
             className={cx(
-              'shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition',
-              tab === t.id ? 'bg-team text-white ring-1 ring-inset ring-team-accent/70' : 'text-zinc-400 hover:bg-zinc-900',
+              'h-10 shrink-0 rounded-[10px] px-4 text-sm transition',
+              tab === t.id ? 'bg-team font-semibold text-white' : 'font-medium text-ink-2 hover:bg-line-2',
             )}
           >
             {t.label}
@@ -91,38 +95,39 @@ function TeamView({ team }: { team: TeamId }) {
         ))}
       </nav>
 
-      {!d ? (
-        <div className="flex flex-col gap-2">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-14" />
-          ))}
-        </div>
-      ) : (
-        <>
-          {tab === 'schedule' && (
-            <Section s={d.schedule} empty="No schedule published yet.">
-              {(games) => <ScheduleList games={games} />}
-            </Section>
-          )}
-          {tab === 'roster' && (
-            <Section s={d.roster} empty="Roster unavailable.">
-              {(players) => <RosterList players={players} />}
-            </Section>
-          )}
-          {tab === 'box' && (
-            <Section s={d.lastBox} empty="No completed games yet.">
-              {(box) => <BoxScoreView box={box} />}
-            </Section>
-          )}
-          {tab === 'extras' && (
-            <Section s={d.extras} empty="Nothing here right now.">
-              {(extras) => <ExtrasView extras={extras} />}
-            </Section>
-          )}
-        </>
-      )}
-
-      <DataStatus savedAt={api.savedAt} loading={api.loading} offline={api.offline} error={api.error} onRefresh={api.refresh} />
+      <div className="px-4 pt-4 lg:px-0">
+        {!d ? (
+          <div className="flex flex-col gap-2.5">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-16" />
+            ))}
+          </div>
+        ) : (
+          <>
+            {tab === 'schedule' && (
+              <Section s={d.schedule} empty="No schedule published yet.">
+                {(games) => <ScheduleList games={games} />}
+              </Section>
+            )}
+            {tab === 'roster' && (
+              <Section s={d.roster} empty="Roster unavailable.">
+                {(players) => <RosterList players={players} />}
+              </Section>
+            )}
+            {tab === 'box' && (
+              <Section s={d.lastBox} empty="No completed games yet.">
+                {(box) => <BoxScoreView box={box} />}
+              </Section>
+            )}
+            {tab === 'extras' && (
+              <Section s={d.extras} empty="Nothing here right now.">
+                {(extras) => <ExtrasView extras={extras} teamName={meta.shortName} />}
+              </Section>
+            )}
+          </>
+        )}
+        <DataStatus savedAt={api.savedAt} loading={api.loading} offline={api.offline} error={api.error} onRefresh={api.refresh} />
+      </div>
     </div>
   );
 }
@@ -131,15 +136,15 @@ function Section<T>({ s, empty, children }: { s: Sourced<T>; empty: string; chil
   const [showErr, setShowErr] = useState(false);
   if (s.data == null || (Array.isArray(s.data) && s.data.length === 0)) {
     return (
-      <div className="rounded-2xl bg-zinc-900/70 p-4 text-sm text-zinc-400 ring-1 ring-zinc-800">
+      <Card className="p-5 text-sm text-muted">
         {s.error && !/no completed/i.test(s.error) ? (
           <button onClick={() => setShowErr(!showErr)} className="text-left">
-            Couldn't load this right now.{showErr && <span className="mt-1 block text-[11px] text-zinc-500">{s.error}</span>}
+            Couldn't load this right now.{showErr && <span className="mt-1 block text-xs">{s.error}</span>}
           </button>
         ) : (
           empty
         )}
-      </div>
+      </Card>
     );
   }
   return (

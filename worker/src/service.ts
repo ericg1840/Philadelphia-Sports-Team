@@ -133,12 +133,21 @@ export async function homePayload(ctx: Ctx): Promise<HomePayload> {
     })
     .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 
+  const recentFrom = addDays(startOfDayET(ctx.now), -7).getTime();
+  const recent = results
+    .flatMap((r) => r.games)
+    .filter((g) => {
+      const t = Date.parse(g.start);
+      return g.status === 'final' && t >= recentFrom && t < from;
+    })
+    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+
   // Same objects appear in `week` and as `nextGame`, so weather is attached once.
   const needWeather = new Set<Game>(week);
   for (const r of results) if (r.summary.nextGame) needWeather.add(r.summary.nextGame);
   await attachWeather(ctx, [...needWeather]);
 
-  return { generatedAt: ctx.now.toISOString(), teams: results.map((r) => r.summary), week };
+  return { generatedAt: ctx.now.toISOString(), teams: results.map((r) => r.summary), week, recent };
 }
 
 export async function teamPayload(ctx: Ctx, team: TeamId): Promise<TeamPayload> {

@@ -64,6 +64,17 @@ describe('/api/home', () => {
     expect(new Set(body.week.map((g) => g.team)).size).toBe(5);
   });
 
+  it('lists the last 7 days of results separately from the week', async () => {
+    const { body } = await get<HomePayload>('/api/home');
+    expect(body.recent.length).toBeGreaterThan(0);
+    for (const g of body.recent) {
+      expect(g.status).toBe('final');
+      expect(Date.parse(g.start)).toBeLessThan(startOfDayET(NOW).getTime());
+      expect(Date.parse(g.start)).toBeGreaterThanOrEqual(startOfDayET(NOW).getTime() - 8 * 86400_000);
+    }
+    expect(body.recent.map((g) => g.team)).toContain('eagles');
+  });
+
   it('attaches weather only to outdoor Philly venues', async () => {
     const { body } = await get<HomePayload>('/api/home');
     for (const g of body.week) {

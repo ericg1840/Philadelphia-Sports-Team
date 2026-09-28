@@ -19,8 +19,8 @@ export default defineConfig({
         name: 'Philly Sports',
         short_name: 'Philly',
         description: 'Upcoming games for the Phillies, Eagles, Sixers, Flyers and Union.',
-        theme_color: '#09090b',
-        background_color: '#09090b',
+        theme_color: '#F4F4F6',
+        background_color: '#F4F4F6',
         display: 'standalone',
         start_url: base,
         scope: base,
@@ -45,7 +45,7 @@ export default defineConfig({
           },
           {
             urlPattern: ({ url }) =>
-              /(^|\.)(espncdn\.com|mlbstatic\.com|nhle\.com|weather\.gov)$/.test(url.hostname),
+              /(^|\.)(espncdn\.com|mlbstatic\.com|nhle\.com|weather\.gov|fonts\.googleapis\.com|fonts\.gstatic\.com)$/.test(url.hostname),
             handler: 'CacheFirst',
             options: {
               cacheName: 'logos',

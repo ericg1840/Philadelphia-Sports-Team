@@ -2,7 +2,7 @@ import { Check, Star, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { TEAM_IDS, TEAMS } from '../../../shared/teams';
 import { useFavorite } from '../lib/favorite';
-import { cx, TeamLogo } from './bits';
+import { cx, LogoDisc, TeamLogo } from './bits';
 
 export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { favorite, setFavorite } = useFavorite();
@@ -16,18 +16,18 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label="Settings">
-      <button className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-label="Close settings" />
-      <div className="relative w-full max-w-md rounded-t-3xl bg-zinc-900 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] ring-1 ring-zinc-800 sm:rounded-3xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            <Star size={16} className="text-team-accent" /> Favorite team
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label="Favorite team">
+      <button className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" onClick={onClose} aria-label="Close" />
+      <div className="relative w-full max-w-md rounded-t-3xl bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 font-display text-lg font-extrabold">
+            <Star size={18} className="fill-team text-team" aria-hidden /> Favorite team
           </h2>
-          <button onClick={onClose} className="rounded-full p-1.5 text-zinc-400 hover:bg-zinc-800" aria-label="Close">
-            <X size={18} />
+          <button onClick={onClose} className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-line-2" aria-label="Close">
+            <X size={20} />
           </button>
         </div>
-        <p className="mb-3 text-xs text-zinc-400">Your favorite gets top billing on the home screen and sets the app's colors.</p>
+        <p className="mb-4 text-sm text-muted">Your favorite gets the big banner on the dashboard and sets the app's color.</p>
         <div className="flex flex-col gap-2">
           {TEAM_IDS.map((t) => {
             const meta = TEAMS[t];
@@ -40,17 +40,19 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
                   onClose();
                 }}
                 className={cx(
-                  'flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left ring-1 transition',
-                  on ? 'bg-zinc-800 ring-zinc-600' : 'ring-zinc-800 hover:bg-zinc-800/60',
+                  'flex min-h-14 items-center gap-3 rounded-2xl px-3 text-left ring-1 ring-inset transition',
+                  on ? 'bg-ground ring-2' : 'ring-line hover:bg-ground',
                 )}
+                style={on ? ({ '--tw-ring-color': meta.colors.accent } as React.CSSProperties) : undefined}
               >
-                <span className="h-8 w-1.5 rounded-full" style={{ background: meta.colors.accent }} />
-                <TeamLogo team={t} size={28} />
+                <LogoDisc size={36}>
+                  <TeamLogo team={t} size={26} />
+                </LogoDisc>
                 <span className="flex-1">
-                  <span className="block text-sm font-medium">{meta.shortName}</span>
-                  <span className="block text-[11px] text-zinc-500">{meta.league}</span>
+                  <span className="block text-[15px] font-semibold">{meta.shortName}</span>
+                  <span className="block text-xs text-muted">{meta.league}</span>
                 </span>
-                {on && <Check size={18} style={{ color: meta.colors.accent }} />}
+                {on && <Check size={20} style={{ color: meta.colors.accent }} aria-label="Selected" />}
               </button>
             );
           })}
