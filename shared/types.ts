@@ -90,6 +90,21 @@ export interface Player {
   injury?: Injury;
 }
 
+/** Detail card for one player: who they are and how their latest season is going. */
+export interface PlayerProfile {
+  id: string;
+  team: TeamId;
+  name: string;
+  number?: string;
+  position: string;
+  headshot?: string;
+  /** Ordered facts: Age, Height, Weight, Born, College, Draft, Bats/Throws… (only those known). */
+  bio: { label: string; value: string }[];
+  /** Latest season with stats, e.g. { title: '2026 season', stats: [{ label: 'AVG', value: '.287' }] }. */
+  season: { title: string; stats: { label: string; value: string }[] } | null;
+  injury?: Injury;
+}
+
 export interface BoxScoreLine {
   team: TeamRef;
   home: boolean;

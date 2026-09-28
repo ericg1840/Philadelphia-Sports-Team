@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { HomePayload, TeamPayload } from '../../shared/types';
+import type { HomePayload, PlayerProfile, TeamPayload } from '../../shared/types';
 import { flattenStandings, normalizeEspnEvent, standingFromGroups } from '../src/adapters/espn';
 import { normalizeMlbStanding } from '../src/adapters/mlb';
 import { nhlSeason } from '../src/adapters/nhl';
@@ -266,5 +266,61 @@ describe('normalizers', () => {
     const s = standingFromGroups(groups, cfg);
     expect(s?.summary).toBe('Eastern Conference');
     expect(s?.playoff).toBeUndefined();
+  });
+});
+
+describe('/api/player/:team/:id', () => {
+  const bio = (p: PlayerProfile, label: string) => p.bio.find((b) => b.label === label)?.value;
+
+  it('phillies pitcher: bio, draft/college and latest season line', async () => {
+    const { status, body } = await get<PlayerProfile>('/api/player/phillies/600000');
+    expect(status).toBe(200);
+    expect(body.name).toBe('Zack Wheeler');
+    expect(body.headshot).toContain('/people/600000/headshot');
+    expect(bio(body, 'College')).toBe('Univ. of Georgia');
+    expect(bio(body, 'Bats/Throws')).toBe('R/R');
+    expect(body.season?.title).toBe('2026 season');
+    expect(body.season?.stats.slice(0, 3)).toEqual([
+      { label: 'ERA', value: '2.71' },
+      { label: 'W', value: '16' },
+      { label: 'L', value: '6' },
+    ]);
+  });
+
+  it('phillies hitter: a traded player uses the season total row', async () => {
+    const { body } = await get<PlayerProfile>('/api/player/phillies/600010');
+    expect(body.season?.stats[0]).toEqual({ label: 'AVG', value: '.287' });
+  });
+
+  it('carries injury status from the roster', async () => {
+    const { body } = await get<PlayerProfile>('/api/player/phillies/600003');
+    expect(body.injury?.status).toBe('Injured 15-Day');
+  });
+
+  it('flyers skater and goalie lines', async () => {
+    const skater = (await get<PlayerProfile>('/api/player/flyers/1')).body;
+    expect(skater.name).toBe('Travis Konecny');
+    expect(bio(skater, 'Height')).toBe(`5' 10"`);
+    expect(bio(skater, 'Age')).toBe('29');
+    expect(skater.season?.title).toBe('2025-26 season');
+    expect(skater.season?.stats.find((x) => x.label === 'P')?.value).toBe('76');
+    const goalie = (await get<PlayerProfile>('/api/player/flyers/9')).body;
+    expect(goalie.season?.stats.find((x) => x.label === 'SV%')?.value).toBe('.903');
+    expect(bio(goalie, 'Catches')).toBe('L');
+  });
+
+  it('eagles player from ESPN with college, draft and season stats', async () => {
+    const { body } = await get<PlayerProfile>('/api/player/eagles/1');
+    expect(body.name).toBe('Jalen Hurts');
+    expect(bio(body, 'College')).toBe('Oklahoma');
+    expect(bio(body, 'Draft')).toBe('2020: Rd 2, Pk 53 (PHI)');
+    expect(body.headshot).toBe('https://a.espncdn.com/i/headshots/nfl/players/full/1.png');
+    expect(body.season?.title).toBe('2026 Regular Season');
+    expect(body.season?.stats[2]).toEqual({ label: 'YDS', value: '1,043' });
+  });
+
+  it('rejects bad ids and unknown teams', async () => {
+    expect((await get('/api/player/phillies/abc')).status).toBe(404);
+    expect((await get('/api/player/rangers/1')).status).toBe(404);
   });
 });

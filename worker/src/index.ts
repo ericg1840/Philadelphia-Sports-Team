@@ -1,7 +1,7 @@
 import { isTeamId } from '../../shared/teams';
 import { DataCache } from './cache';
 import { createFetchJson, type Ctx, type FetchJson } from './context';
-import { homePayload, teamPayload } from './service';
+import { homePayload, playerPayload, teamPayload } from './service';
 
 export interface Env {
   ALLOWED_ORIGIN?: string;
@@ -50,6 +50,11 @@ export async function handle(
   try {
     if (url.pathname === '/api/health') return json({ ok: true, now: ctx.now.toISOString() }, { cors });
     if (url.pathname === '/api/home') return json(await homePayload(ctx), { cors });
+    const pm = url.pathname.match(/^\/api\/player\/([a-z]+)\/(\d{1,12})$/);
+    if (pm) {
+      if (!isTeamId(pm[1])) return json({ error: 'unknown team' }, { status: 404, cors });
+      return json(await playerPayload(ctx, pm[1], pm[2]), { cors });
+    }
     const m = url.pathname.match(/^\/api\/team\/([a-z]+)$/);
     if (m) {
       if (!isTeamId(m[1])) return json({ error: 'unknown team' }, { status: 404, cors });

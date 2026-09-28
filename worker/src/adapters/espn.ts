@@ -6,6 +6,7 @@ import type {
   Injury,
   League,
   Player,
+  PlayerProfile,
   SeasonType,
   Standing,
   TableRow,
@@ -14,12 +15,13 @@ import type {
   TeamRef,
 } from '../../../shared/types';
 import type { Ctx } from '../context';
-import { MINUTE, num, ordinal, sortByStart, uniq } from '../util';
+import { ageOn, facts, formatBirthDate, MINUTE, num, ordinal, sortByStart, uniq } from '../util';
 import { makeVenue } from '../venues';
 import type { Adapter } from './types';
 
 const SITE = 'https://site.api.espn.com/apis/site/v2/sports';
 const STANDINGS = 'https://site.api.espn.com/apis/v2/sports';
+const COMMON = 'https://site.web.api.espn.com/apis/common/v3/sports';
 
 export interface EspnTeamConfig {
   team: TeamId;
@@ -367,6 +369,52 @@ export function normalizeEspnBox(d: any, cfg: EspnTeamConfig): BoxScore {
   };
 }
 
+// ---------- player card ----------
+
+const HEADSHOT_LEAGUE: Record<string, string> = { nfl: 'nfl', nba: 'nba', 'usa.1': 'soccer', nhl: 'nhl' };
+
+/** The regular-season line from the athlete overview: first split, labels zipped with values. */
+function overviewStats(o: any): { title: string; stats: { label: string; value: string }[] } | null {
+  const st = o?.statistics;
+  const labels: string[] = st?.labels ?? st?.names ?? [];
+  const splits: any[] = st?.splits ?? [];
+  const split = splits.find((x) => /regular|season/i.test(x.displayName ?? '')) ?? splits[0];
+  const values: unknown[] = split?.stats ?? [];
+  if (!labels.length || !values.length) return null;
+  const stats = labels
+    .map((label, i) => ({ label, value: values[i] == null ? '' : String(values[i]) }))
+    .filter((x) => x.value !== '')
+    .slice(0, 8);
+  const title = st?.displayName && !/statistics/i.test(st.displayName) ? st.displayName : split?.displayName ?? 'This season';
+  return stats.length ? { title: String(title), stats } : null;
+}
+
+export function normalizeEspnPlayer(athleteDoc: any, overview: any, cfg: Pick<EspnTeamConfig, 'team' | 'path'>, now: Date): PlayerProfile {
+  const a = athleteDoc?.athlete ?? athleteDoc;
+  if (!a?.id) throw new Error('player not found');
+  const dob = typeof a.dateOfBirth === 'string' ? a.dateOfBirth.slice(0, 10) : undefined;
+  const league = HEADSHOT_LEAGUE[cfg.path];
+  return {
+    id: String(a.id),
+    team: cfg.team,
+    name: a.displayName ?? a.fullName ?? 'Unknown',
+    number: a.jersey || undefined,
+    position: a.position?.displayName ?? a.position?.abbreviation ?? '',
+    headshot: a.headshot?.href ?? (league ? `https://a.espncdn.com/i/headshots/${league}/players/full/${a.id}.png` : undefined),
+    bio: facts([
+      ['Age', a.age ?? ageOn(dob, now)],
+      ['Height', a.displayHeight],
+      ['Weight', a.displayWeight],
+      ['Born', [formatBirthDate(dob), a.displayBirthPlace].filter(Boolean).join(' · ') || undefined],
+      ['College', a.college?.name ?? a.college?.shortName],
+      ['Draft', a.displayDraft],
+      ['Experience', a.displayExperience],
+      ['Nationality', cfg.path === 'usa.1' ? a.citizenship ?? a.flag?.alt : undefined],
+    ]),
+    season: overviewStats(overview),
+  };
+}
+
 // ---------- adapter factory ----------
 
 export function espnAdapter(cfg: EspnTeamConfig): Adapter {
@@ -415,6 +463,12 @@ export function espnAdapter(cfg: EspnTeamConfig): Adapter {
         return tableFromGroups((await groups(ctx)).data, cfg, 9);
       }
       return { kind: 'none' };
+    },
+
+    async player(ctx, id) {
+      const url = `${COMMON}/${cfg.sport}/${cfg.path}/athletes/${id}`;
+      const [athlete, overview] = await Promise.all([ctx.fetchJson(url), ctx.fetchJson(`${url}/overview`).catch(() => null)]);
+      return normalizeEspnPlayer(athlete, overview, cfg, ctx.now);
     },
   };
 }

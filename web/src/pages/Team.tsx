@@ -1,13 +1,14 @@
 import { ArrowLeft, Star } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { isTeamId, TEAMS } from '../../../shared/teams';
-import type { Sourced, TeamId, TeamPayload } from '../../../shared/types';
+import type { Player, Sourced, TeamId, TeamPayload } from '../../../shared/types';
 import { Card, cx, PlayoffPill, Skeleton, TeamLogo } from '../components/bits';
 import { DataStatus, SectionNote } from '../components/Status';
 import { BoxScoreView } from '../components/team/BoxScoreView';
 import { ExtrasView } from '../components/team/ExtrasView';
-import { RosterList } from '../components/team/RosterList';
+import { PlayerSheet } from '../components/team/PlayerSheet';
+import { OpenPlayerContext, RosterList } from '../components/team/RosterList';
 import { ScheduleList } from '../components/team/ScheduleList';
 import { useApi } from '../lib/api';
 import { teamStyle, useFavorite } from '../lib/favorite';
@@ -26,6 +27,30 @@ function TeamView({ team }: { team: TeamId }) {
   const { favorite, setFavorite } = useFavorite();
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') as Tab) ?? 'schedule';
+  // The open player card lives in the URL (?player=id) so the back button closes it.
+  const playerId = params.get('player');
+  const [playerName, setPlayerName] = useState<string>();
+  const openPlayer = useCallback(
+    (p: Player) => {
+      setPlayerName(p.name);
+      setParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('player', p.id);
+        return next;
+      });
+    },
+    [setParams],
+  );
+  const closePlayer = useCallback(() => {
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('player');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [setParams]);
   const d = api.data;
   const isFav = favorite === team;
 
@@ -38,6 +63,7 @@ function TeamView({ team }: { team: TeamId }) {
 
   const standing = d?.standing.data;
   return (
+    <OpenPlayerContext.Provider value={openPlayer}>
     <div style={teamStyle(team)} className="mx-auto w-full max-w-4xl lg:px-8 lg:py-7">
       <header className="relative overflow-hidden px-4 pb-5 pt-4 text-white lg:rounded-[20px] lg:px-7 lg:py-6" style={{ background: meta.colors.accent }}>
         <div className="pointer-events-none absolute -right-8 -top-8 opacity-[0.14]">
@@ -128,7 +154,9 @@ function TeamView({ team }: { team: TeamId }) {
         )}
         <DataStatus savedAt={api.savedAt} loading={api.loading} offline={api.offline} error={api.error} onRefresh={api.refresh} />
       </div>
+      {playerId && /^\d+$/.test(playerId) && <PlayerSheet team={team} playerId={playerId} fallbackName={playerName} onClose={closePlayer} />}
     </div>
+    </OpenPlayerContext.Provider>
   );
 }
 

@@ -4,6 +4,7 @@ import type {
   Game,
   HomePayload,
   Player,
+  PlayerProfile,
   Sourced,
   Standing,
   TeamExtras,
@@ -182,4 +183,14 @@ export async function teamPayload(ctx: Ctx, team: TeamId): Promise<TeamPayload> 
     lastBox: sourced<BoxScore>(box),
     extras: sourced<TeamExtras>(ext),
   };
+}
+
+export async function playerPayload(ctx: Ctx, team: TeamId, id: string): Promise<PlayerProfile> {
+  const [profile, rost] = await Promise.all([
+    ctx.cache.get(`player:${team}:${id}`, HOUR, () => ADAPTERS[team].player(ctx, id)),
+    roster(ctx, team).catch(() => null),
+  ]);
+  // The roster already carries injury status for every league (ESPN overlay for the Flyers).
+  const injury = rost?.data.find((p) => p.id === id)?.injury;
+  return { ...profile.data, injury };
 }
