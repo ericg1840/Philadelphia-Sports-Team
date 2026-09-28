@@ -4,6 +4,7 @@ import { SectionTitle, Skeleton } from '../components/bits';
 import { HeroCard } from '../components/HeroCard';
 import { DataStatus } from '../components/Status';
 import { TeamCard } from '../components/TeamCard';
+import { TodaySection } from '../components/TodaySection';
 import { WeekStrip } from '../components/WeekStrip';
 import { useApi } from '../lib/api';
 import { useFavorite } from '../lib/favorite';
@@ -37,6 +38,7 @@ export function Home() {
 
   return (
     <div className="flex flex-col gap-6">
+      <TodaySection week={data.week} teams={data.teams} />
       {fav && <HeroCard s={fav} />}
       <WeekStrip games={data.week} />
       <section>

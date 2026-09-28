@@ -29,8 +29,17 @@ describe('/api/home', () => {
     expect(body.teams.map((t) => t.team)).toEqual(['phillies', 'eagles', 'sixers', 'flyers', 'union']);
     for (const t of body.teams) {
       expect(t.nextGame, t.team).not.toBeNull();
-      expect(Date.parse(t.nextGame!.start)).toBeGreaterThan(NOW.getTime());
+      if (t.nextGame!.status !== 'live') expect(Date.parse(t.nextGame!.start)).toBeGreaterThan(NOW.getTime());
     }
+  });
+
+  it('keeps an in-progress game as next up with its live score', async () => {
+    const { body } = await get<HomePayload>('/api/home');
+    const flyers = body.teams.find((t) => t.team === 'flyers')!.nextGame!;
+    expect(flyers.status).toBe('live');
+    expect(flyers.score).toEqual({ us: 2, them: 1 });
+    expect(flyers.statusDetail).toBe('P2');
+    expect(body.week.some((g) => g.id === flyers.id)).toBe(true);
   });
 
   it('computes form and last game', async () => {

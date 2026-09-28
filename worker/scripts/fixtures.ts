@@ -185,6 +185,7 @@ function nhlSchedule(now: Date) {
       nhlGame(now, 2026010001, -6, 19, BOS, true, 1, [3, 2]),
       nhlGame(now, 2026010002, -4, 19, NYI, false, 1, [2, 3, 'OT']),
       nhlGame(now, 2026010003, -2, 19, NJD, true, 1, [4, 1]),
+      { ...nhlGame(now, 2026010009, 0, 13, BOS, false, 1), gameState: 'LIVE', periodDescriptor: { number: 2, periodType: 'REG' }, homeTeam: { ...BOS, score: 1 }, awayTeam: PHI_NHL(2) },
       nhlGame(now, 2026010004, 1, 19, NYR, false, 1),
       nhlGame(now, 2026010005, 3, 19, NJD, true, 1),
       nhlGame(now, 2026010006, 5, 19, NYI, true, 1),
@@ -331,6 +332,7 @@ function unionSchedule(now: Date, fixture: boolean) {
   if (fixture)
     return {
       events: [
+        espnEvent(now, '701002', 0, 19, 30, UNION, NE, true, 'Subaru Park', { tv: 'Apple TV' }),
         espnEvent(now, '701003', 2, 19, 30, UNION, DC, false, 'Audi Field', { tv: 'Apple TV' }),
         espnEvent(now, '701004', 5, 19, 30, UNION, NYC, true, 'Subaru Park', { tv: 'Apple TV' }),
         espnEvent(now, '701005', 12, 19, 30, UNION, MIA, true, 'Subaru Park', { tv: 'Apple TV' }),
