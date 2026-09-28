@@ -1,4 +1,4 @@
-// Small presentational building blocks shared by the home screen and team pages.
+// Small presentational building blocks shared across pages.
 import { CloudRain, Tv, Wind } from 'lucide-react';
 import { useState } from 'react';
 import { TEAMS } from '../../../shared/teams';
@@ -14,6 +14,7 @@ export function Logo({
   size = 28,
   className,
   decorative,
+  fallbackBg,
 }: {
   src?: string;
   alt: string;
@@ -21,14 +22,19 @@ export function Logo({
   className?: string;
   /** Render nothing (instead of a monogram) if the image is missing. */
   decorative?: boolean;
+  fallbackBg?: string;
 }) {
   const [failed, setFailed] = useState(false);
   if ((!src || failed) && decorative) return null;
   if (!src || failed) {
     return (
       <span
-        className={cx('inline-flex shrink-0 items-center justify-center rounded-full bg-zinc-800 font-semibold text-zinc-300', className)}
-        style={{ width: size, height: size, fontSize: size * 0.34 }}
+        className={cx(
+          'inline-flex shrink-0 items-center justify-center rounded-full font-bold',
+          fallbackBg ? 'text-white' : 'bg-line-2 text-ink-2',
+          className,
+        )}
+        style={{ width: size, height: size, fontSize: Math.max(9, size * 0.32), background: fallbackBg }}
         aria-label={alt}
       >
         {alt.slice(0, 3).toUpperCase()}
@@ -50,30 +56,42 @@ export function Logo({
 }
 
 export const TeamLogo = ({ team, size, decorative }: { team: TeamId; size?: number; decorative?: boolean }) => (
-  <Logo src={TEAMS[team].logo} alt={TEAMS[team].shortName} size={size} decorative={decorative} />
+  <Logo src={TEAMS[team].logo} alt={TEAMS[team].shortName} size={size} decorative={decorative} fallbackBg={TEAMS[team].colors.accent} />
 );
 
 export const OpponentLogo = ({ opp, size }: { opp: TeamRef; size?: number }) => (
   <Logo src={opp.logo} alt={opp.abbrev} size={size} />
 );
 
+/** Team logo sitting in a white disc, so any logo reads on any background. */
+export function LogoDisc({ children, size = 40, ring }: { children: React.ReactNode; size?: number; ring?: string }) {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-full bg-surface ring-1 ring-line"
+      style={{ width: size, height: size, boxShadow: ring ? `0 0 0 3px var(--color-ground), 0 0 0 5px ${ring}` : undefined }}
+    >
+      {children}
+    </span>
+  );
+}
+
 const RESULT_STYLE: Record<GameResult, string> = {
-  W: 'bg-emerald-500/90 text-emerald-950',
-  L: 'bg-rose-500/80 text-rose-950',
-  T: 'bg-zinc-500 text-zinc-950',
-  OTL: 'bg-amber-400/90 text-amber-950',
+  W: 'bg-[#1B7A43] text-white',
+  L: 'bg-[#D8D8DF] text-ink-2',
+  T: 'bg-[#8C8C98] text-white',
+  OTL: 'bg-[#FFE2B8] text-[#8A4B00]',
 };
 
-export function ResultBadge({ result, className }: { result: GameResult; className?: string }) {
+export function ResultBadge({ result, small }: { result: GameResult; small?: boolean }) {
   return (
     <span
       className={cx(
-        'inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[11px] font-bold leading-none',
+        'inline-flex items-center justify-center rounded font-extrabold leading-none',
+        small ? 'h-[18px] min-w-[18px] px-0.5 text-[10px]' : 'h-6 min-w-6 px-1 text-xs',
         RESULT_STYLE[result],
-        className,
       )}
     >
-      {result === 'OTL' ? 'OT' : result}
+      {result === 'OTL' ? 'OT' : result === 'T' ? 'D' : result}
     </span>
   );
 }
@@ -81,20 +99,28 @@ export function ResultBadge({ result, className }: { result: GameResult; classNa
 export function FormDots({ form }: { form: GameResult[] }) {
   if (!form.length) return null;
   return (
-    <span className="inline-flex gap-1" aria-label={`Last ${form.length}: ${form.join(' ')}`}>
+    <span className="inline-flex gap-[3px]" aria-label={`Last ${form.length}: ${form.join(' ')}`}>
       {form.map((r, i) => (
-        <ResultBadge key={i} result={r} className="h-4 min-w-4 text-[9px]" />
+        <ResultBadge key={i} result={r} small />
       ))}
     </span>
   );
 }
 
-const PLAYOFF_STYLE: Record<NonNullable<Standing['playoff']>['status'], string> = {
-  clinched: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30',
-  in: 'bg-sky-500/15 text-sky-300 ring-sky-500/30',
-  bubble: 'bg-amber-500/15 text-amber-300 ring-amber-500/30',
-  out: 'bg-zinc-500/15 text-zinc-400 ring-zinc-500/30',
-  eliminated: 'bg-zinc-500/15 text-zinc-500 ring-zinc-500/30',
+export const PLAYOFF_TEXT: Record<NonNullable<Standing['playoff']>['status'], string> = {
+  clinched: 'text-[#1B7A43]',
+  in: 'text-[#1D5FA8]',
+  bubble: 'text-[#8A4B00]',
+  out: 'text-muted',
+  eliminated: 'text-muted',
+};
+
+const PLAYOFF_PILL: Record<NonNullable<Standing['playoff']>['status'], string> = {
+  clinched: 'bg-[#E3F3EA] text-[#1B7A43]',
+  in: 'bg-[#E4EEF9] text-[#1D5FA8]',
+  bubble: 'bg-[#FFF1D6] text-[#8A4B00]',
+  out: 'bg-line-2 text-muted',
+  eliminated: 'bg-line-2 text-muted',
 };
 
 export function PlayoffPill({ playoff, onColor }: { playoff: Standing['playoff']; onColor?: boolean }) {
@@ -102,8 +128,8 @@ export function PlayoffPill({ playoff, onColor }: { playoff: Standing['playoff']
   return (
     <span
       className={cx(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset',
-        onColor ? 'bg-black/25 text-white ring-white/25' : PLAYOFF_STYLE[playoff.status],
+        'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold',
+        onColor ? 'bg-black/25 text-white' : PLAYOFF_PILL[playoff.status],
       )}
     >
       {playoff.text}
@@ -111,25 +137,30 @@ export function PlayoffPill({ playoff, onColor }: { playoff: Standing['playoff']
   );
 }
 
+export function ClashTag() {
+  return <span className="rounded-md bg-[#FFF1D6] px-2 py-1 text-xs font-semibold text-[#8A4B00]">Clash</span>;
+}
+
 export function WeatherChip({ w, compact }: { w: GameWeather; compact?: boolean }) {
   const rainy = (w.precipChance ?? 0) >= 30;
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-zinc-800/80 px-2 py-0.5 text-[11px] text-zinc-300 ring-1 ring-inset ring-zinc-700/60',
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs',
+        rainy ? 'bg-[#E4EEF9] text-[#1D5FA8]' : 'bg-line-2 text-ink-2',
       )}
       title={w.shortForecast}
     >
-      <span className="font-semibold text-zinc-100">{w.tempF}°</span>
-      {!compact && <span className="max-w-32 truncate">{w.shortForecast}</span>}
+      <span className="font-bold">{w.tempF}°</span>
+      {!compact && <span className="max-w-36 truncate">{w.shortForecast}</span>}
       <span className="inline-flex items-center gap-0.5">
-        <Wind size={11} aria-hidden />
+        <Wind size={12} aria-hidden />
         {w.wind.replace(' mph', '')}
         {!compact && ` mph ${w.windDirection}`}
       </span>
       {w.precipChance != null && (
-        <span className={cx('inline-flex items-center gap-0.5', rainy && 'text-sky-300')}>
-          <CloudRain size={11} aria-hidden />
+        <span className="inline-flex items-center gap-0.5 font-semibold">
+          <CloudRain size={12} aria-hidden />
           {w.precipChance}%
         </span>
       )}
@@ -137,33 +168,37 @@ export function WeatherChip({ w, compact }: { w: GameWeather; compact?: boolean 
   );
 }
 
-export function Broadcasts({ game }: { game: Game }) {
+export function Broadcasts({ game, className }: { game: Game; className?: string }) {
   if (!game.broadcasts.length) return null;
   return (
-    <span className="inline-flex items-center gap-1 text-zinc-400">
-      <Tv size={12} aria-hidden />
-      {game.broadcasts.slice(0, 2).join(', ')}
+    <span className={cx('inline-flex items-center gap-1', className)}>
+      <Tv size={13} aria-hidden />
+      {game.broadcasts.slice(0, 2).join(' · ')}
     </span>
   );
 }
 
 export function Card({ children, className, style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <div className={cx('rounded-2xl bg-zinc-900/80 ring-1 ring-zinc-800', className)} style={style}>
+    <div className={cx('rounded-2xl bg-surface shadow-[0_1px_2px_rgba(22,22,26,0.06)]', className)} style={style}>
       {children}
     </div>
   );
 }
 
-export function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
+export function SectionTitle({ children, right, as: As = 'h2' }: { children: React.ReactNode; right?: React.ReactNode; as?: 'h1' | 'h2' }) {
   return (
-    <div className="mb-2 flex items-baseline justify-between px-1">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{children}</h2>
+    <div className="mb-3 flex items-baseline justify-between gap-3">
+      <As className={cx('m-0 font-display font-extrabold tracking-tight', As === 'h1' ? 'text-3xl' : 'text-lg sm:text-xl')}>{children}</As>
       {right}
     </div>
   );
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cx('animate-pulse rounded-2xl bg-zinc-900 ring-1 ring-zinc-800', className)} />;
+  return <div className={cx('animate-pulse rounded-2xl bg-line-2', className)} />;
+}
+
+export function Empty({ children }: { children: React.ReactNode }) {
+  return <Card className="p-5 text-sm text-muted">{children}</Card>;
 }

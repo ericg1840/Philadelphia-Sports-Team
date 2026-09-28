@@ -7,8 +7,11 @@ export interface TeamMeta {
   league: League;
   abbrev: string;
   logo: string;
-  /** `accent` is a brighter variant that reads well on the dark UI. */
-  colors: { primary: string; secondary: string; accent: string };
+  /**
+   * `accent`: a fill-safe variant (white text on it, or as text on white, passes contrast).
+   * `dot`: the recognizable brand hue for small swatches.
+   */
+  colors: { primary: string; secondary: string; accent: string; dot: string };
   /** Label for the team-specific extras tab, if any. */
   extrasLabel?: string;
 }
@@ -21,7 +24,7 @@ export const TEAMS: Record<TeamId, TeamMeta> = {
     league: 'MLB',
     abbrev: 'PHI',
     logo: 'https://a.espncdn.com/i/teamlogos/mlb/500/phi.png',
-    colors: { primary: '#E81828', secondary: '#002D72', accent: '#FF3B4A' },
+    colors: { primary: '#E81828', secondary: '#002D72', accent: '#C8102E', dot: '#C8102E' },
     extrasLabel: 'Probables',
   },
   eagles: {
@@ -31,7 +34,7 @@ export const TEAMS: Record<TeamId, TeamMeta> = {
     league: 'NFL',
     abbrev: 'PHI',
     logo: 'https://a.espncdn.com/i/teamlogos/nfl/500/phi.png',
-    colors: { primary: '#004C54', secondary: '#A5ACAF', accent: '#2BB3B1' },
+    colors: { primary: '#004C54', secondary: '#A5ACAF', accent: '#004C54', dot: '#004C54' },
     extrasLabel: 'Injuries',
   },
   sixers: {
@@ -41,7 +44,7 @@ export const TEAMS: Record<TeamId, TeamMeta> = {
     league: 'NBA',
     abbrev: 'PHI',
     logo: 'https://a.espncdn.com/i/teamlogos/nba/500/phi.png',
-    colors: { primary: '#006BB6', secondary: '#ED174C', accent: '#3D9BE9' },
+    colors: { primary: '#006BB6', secondary: '#ED174C', accent: '#006BB6', dot: '#006BB6' },
   },
   flyers: {
     id: 'flyers',
@@ -50,7 +53,7 @@ export const TEAMS: Record<TeamId, TeamMeta> = {
     league: 'NHL',
     abbrev: 'PHI',
     logo: 'https://a.espncdn.com/i/teamlogos/nhl/500/phi.png',
-    colors: { primary: '#F74902', secondary: '#000000', accent: '#FF6A2B' },
+    colors: { primary: '#F74902', secondary: '#000000', accent: '#C23E00', dot: '#E04E0B' },
   },
   union: {
     id: 'union',
@@ -59,7 +62,7 @@ export const TEAMS: Record<TeamId, TeamMeta> = {
     league: 'MLS',
     abbrev: 'PHI',
     logo: 'https://a.espncdn.com/i/teamlogos/soccer/500/10739.png',
-    colors: { primary: '#071B2C', secondary: '#B19B69', accent: '#C9AE72' },
+    colors: { primary: '#071B2C', secondary: '#B19B69', accent: '#071B2C', dot: '#B19B69' },
     extrasLabel: 'MLS Table',
   },
 };

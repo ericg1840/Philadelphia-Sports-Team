@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Game } from '../../../../shared/types';
-import { formatMonth, formatTime, formatWeekday, formatDate, vsAt } from '../../lib/format';
-import { Broadcasts, cx, OpponentLogo, ResultBadge, WeatherChip } from '../bits';
+import { formatDate, formatMonth, formatTime, formatWeekday, vsAt } from '../../lib/format';
+import { Broadcasts, Card, cx, LogoDisc, OpponentLogo, ResultBadge, WeatherChip } from '../bits';
 
 function nextIndex(games: Game[]) {
   const now = Date.now();
@@ -25,20 +25,20 @@ export function ScheduleList({ games }: { games: Game[] }) {
   return (
     <div>
       {hasPreseason && hasRegular && (
-        <label className="mb-3 flex items-center justify-end gap-2 text-xs text-zinc-400">
-          <input type="checkbox" checked={showPreseason} onChange={(e) => setShowPreseason(e.target.checked)} className="accent-team-accent" />
+        <label className="mb-2 flex min-h-11 cursor-pointer items-center justify-end gap-2 text-sm text-ink-2">
+          <input type="checkbox" checked={showPreseason} onChange={(e) => setShowPreseason(e.target.checked)} className="h-4 w-4 accent-[var(--team-accent)]" />
           Show preseason
         </label>
       )}
-      <ul className="flex flex-col gap-1.5">
+      <ul className="flex flex-col gap-2">
         {visible.map((g, i) => {
           const month = formatMonth(g.start);
           const header = month !== lastMonth;
           lastMonth = month;
           const isNext = i === next;
           return (
-            <li key={g.id} ref={isNext ? nextRef : undefined} className="scroll-mt-24">
-              {header && <div className="px-1 pb-1.5 pt-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">{month}</div>}
+            <li key={g.id} ref={isNext ? nextRef : undefined} className="scroll-mt-28">
+              {header && <div className="px-1 pb-2 pt-5 text-xs font-bold uppercase tracking-[0.08em] text-muted">{month}</div>}
               <GameRow g={g} highlight={isNext} />
             </li>
           );
@@ -51,24 +51,27 @@ export function ScheduleList({ games }: { games: Game[] }) {
 function GameRow({ g, highlight }: { g: Game; highlight: boolean }) {
   const past = g.status === 'final';
   return (
-    <div
+    <Card
       className={cx(
-        'flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1',
-        highlight ? 'bg-team/15 ring-team-accent/60' : 'bg-zinc-900/70 ring-zinc-800',
-        g.status === 'postponed' || g.status === 'canceled' ? 'opacity-50' : '',
+        'flex items-center gap-3 px-3.5 py-3',
+        highlight && 'ring-2 ring-team',
+        (g.status === 'postponed' || g.status === 'canceled') && 'opacity-60',
       )}
     >
       <div className="w-11 shrink-0 text-center">
-        <div className="text-[10px] uppercase text-zinc-500">{formatWeekday(g.start)}</div>
-        <div className="text-sm font-semibold leading-tight">{formatDate(g.start).replace(/^\w+ /, '')}</div>
+        <div className="text-[11px] font-semibold uppercase text-muted">{formatWeekday(g.start)}</div>
+        <div className="font-display text-lg font-extrabold leading-tight">{formatDate(g.start).replace(/^\w+ /, '')}</div>
       </div>
-      <OpponentLogo opp={g.opponent} size={28} />
+      <LogoDisc size={36}>
+        <OpponentLogo opp={g.opponent} size={26} />
+      </LogoDisc>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm">
-          <span className="text-zinc-500">{vsAt(g)} </span>
-          <span className="font-medium">{g.opponent.name}</span>
+        <div className="truncate text-[15px]">
+          <span className="text-muted">{vsAt(g)} </span>
+          <span className="font-semibold">{g.opponent.name}</span>
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted">
+          {highlight && <span className="font-bold text-team">Next up</span>}
           {g.note && <span>{g.note}</span>}
           {!past && <Broadcasts game={g} />}
           {g.weather && <WeatherChip w={g.weather} compact />}
@@ -76,23 +79,23 @@ function GameRow({ g, highlight }: { g: Game; highlight: boolean }) {
       </div>
       <div className="shrink-0 text-right">
         {past && g.result ? (
-          <div className="flex items-center gap-1.5">
-            <ResultBadge result={g.result} />
-            <span className="tabular text-sm font-semibold">
+          <div className="flex items-center gap-2">
+            <span className="tabular text-[15px] font-bold">
               {g.score?.us}–{g.score?.them}
             </span>
+            <ResultBadge result={g.result} />
           </div>
         ) : g.status === 'live' ? (
-          <span className="text-xs font-bold text-red-400">
+          <span className="tabular rounded-md bg-[#C8102E] px-2 py-1 text-xs font-bold text-white">
             LIVE {g.score ? `${g.score.us}–${g.score.them}` : ''}
           </span>
         ) : g.status === 'postponed' || g.status === 'canceled' ? (
-          <span className="text-xs capitalize text-zinc-400">{g.status}</span>
+          <span className="text-xs capitalize text-muted">{g.status}</span>
         ) : (
-          <span className="tabular text-sm text-zinc-300">{g.timeTBD ? 'TBD' : formatTime(g.start)}</span>
+          <span className="tabular text-sm font-bold text-ink-2">{g.timeTBD ? 'TBD' : formatTime(g.start)}</span>
         )}
-        {past && g.statusDetail && g.statusDetail !== 'Final' && <div className="text-[10px] text-zinc-500">{g.statusDetail}</div>}
+        {past && g.statusDetail && g.statusDetail !== 'Final' && <div className="text-[11px] text-muted">{g.statusDetail}</div>}
       </div>
-    </div>
+    </Card>
   );
 }
