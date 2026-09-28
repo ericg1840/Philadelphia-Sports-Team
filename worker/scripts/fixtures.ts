@@ -61,10 +61,11 @@ function mlbGame(now: Date, pk: number, days: number, hh: number, opp: number, h
 
 function mlbSchedule(now: Date) {
   const opps = [121, 144, 120, 146, 121, 144, 158, 119, 137];
-  const past = Array.from({ length: 12 }, (_, i) => {
-    const us = [5, 3, 7, 2, 4, 6, 1, 8, 3, 5, 2, 6][i];
-    const them = [3, 4, 2, 5, 1, 2, 3, 4, 2, 4, 3, 1][i];
-    return mlbGame(now, 777000 + i, -13 + i, 18, opps[i % opps.length], i % 2 === 0, { us, them });
+  // ~7 weeks of results so the team page has several months to collapse.
+  const past = Array.from({ length: 48 }, (_, i) => {
+    const us = [5, 3, 7, 2, 4, 6, 1, 8, 3, 5, 2, 6][i % 12];
+    const them = [3, 4, 2, 5, 1, 2, 3, 4, 2, 4, 3, 1][(i + Math.floor(i / 12)) % 12];
+    return mlbGame(now, 777000 + i, -49 + i, 18, opps[i % opps.length], i % 2 === 0, { us: us === them ? us + 1 : us, them });
   });
   const upcoming = [
     mlbGame(now, 778001, 1, 18, 135, true, {
