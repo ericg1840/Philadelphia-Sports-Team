@@ -1,0 +1,14 @@
+name = "philly-sports"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Origin of the deployed frontend, e.g. "https://ericg1840.github.io". "*" allows any.
+ALLOWED_ORIGIN = "*"
+
+# Durable stale-cache fallback. Create with:
+#   npx wrangler kv namespace create STALE_KV
+# then paste the id below and uncomment. The Worker runs without it (memory + Cache API only).
+# [[kv_namespaces]]
+# binding = "STALE_KV"
+# id = "<your-namespace-id>"
