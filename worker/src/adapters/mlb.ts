@@ -5,13 +5,14 @@ import type {
   GameStatus,
   Player,
   ProbablePitcher,
+  PlayerProfile,
   ProbablePitchersMatchup,
   SeasonType,
   Standing,
   TeamRef,
 } from '../../../shared/types';
 import type { Ctx } from '../context';
-import { addDays, isUpcoming, ordinal, sortByStart, uniq, ymdET } from '../util';
+import { addDays, ageOn, facts, formatBirthDate, isUpcoming, ordinal, sortByStart, uniq, ymdET } from '../util';
 import { makeVenue } from '../venues';
 import type { Adapter } from './types';
 
@@ -237,6 +238,76 @@ function pitcherLine(p: any): ProbablePitcher | null {
   };
 }
 
+const HITTING: [string, string][] = [
+  ['avg', 'AVG'],
+  ['homeRuns', 'HR'],
+  ['rbi', 'RBI'],
+  ['ops', 'OPS'],
+  ['hits', 'H'],
+  ['stolenBases', 'SB'],
+  ['obp', 'OBP'],
+  ['gamesPlayed', 'G'],
+];
+const PITCHING: [string, string][] = [
+  ['era', 'ERA'],
+  ['wins', 'W'],
+  ['losses', 'L'],
+  ['strikeOuts', 'SO'],
+  ['inningsPitched', 'IP'],
+  ['whip', 'WHIP'],
+  ['saves', 'SV'],
+  ['gamesPlayed', 'G'],
+];
+
+/** Latest season's line for a stat group from `yearByYear` splits (a traded player's total row wins). */
+function latestSplit(person: any, group: 'hitting' | 'pitching') {
+  const block = (person?.stats ?? []).find((s: any) => s.group?.displayName === group);
+  const splits: any[] = block?.splits ?? [];
+  if (!splits.length) return null;
+  const season = splits.reduce((m, x) => (x.season > m ? x.season : m), splits[0].season);
+  const inSeason = splits.filter((x) => x.season === season);
+  return { season: String(season), stat: (inSeason.find((x) => !x.team) ?? inSeason[inSeason.length - 1]).stat ?? {} };
+}
+
+export function normalizeMlbPlayer(d: any, now: Date): PlayerProfile {
+  const p = d?.people?.[0];
+  if (!p) throw new Error('player not found');
+  const isPitcher = p.primaryPosition?.type === 'Pitcher' || p.primaryPosition?.abbreviation === 'P';
+  const isTwoWay = p.primaryPosition?.type === 'Two-Way Player';
+  const groups: ('hitting' | 'pitching')[] = isTwoWay ? ['pitching', 'hitting'] : isPitcher ? ['pitching'] : ['hitting'];
+  const stats: { label: string; value: string }[] = [];
+  let season: string | null = null;
+  for (const g of groups) {
+    const split = latestSplit(p, g);
+    if (!split) continue;
+    season ??= split.season;
+    for (const [key, label] of g === 'pitching' ? PITCHING : HITTING) {
+      if (split.stat[key] != null) stats.push({ label, value: String(split.stat[key]) });
+    }
+  }
+  const draft = p.drafts?.[0];
+  const born = [p.birthCity, p.birthStateProvince ?? p.birthCountry].filter(Boolean).join(', ');
+  return {
+    id: String(p.id),
+    team: 'phillies',
+    name: p.fullName,
+    number: p.primaryNumber || undefined,
+    position: p.primaryPosition?.name ?? p.primaryPosition?.abbreviation ?? '',
+    headshot: `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/${p.id}/headshot/67/current`,
+    bio: facts([
+      ['Age', p.currentAge ?? ageOn(p.birthDate, now)],
+      ['Bats/Throws', p.batSide?.code && p.pitchHand?.code ? `${p.batSide.code}/${p.pitchHand.code}` : undefined],
+      ['Height', p.height],
+      ['Weight', p.weight ? `${p.weight} lbs` : undefined],
+      ['Born', [formatBirthDate(p.birthDate), born].filter(Boolean).join(' · ') || undefined],
+      ['College', draft?.school?.name],
+      ['Draft', draft?.year ? `${draft.year}, Rd ${draft.pickRound}${draft.pickNumber ? `, #${draft.pickNumber}` : ''}` : p.draftYear],
+      ['MLB debut', formatBirthDate(p.mlbDebutDate)],
+    ]),
+    season: season && stats.length ? { title: `${season} season`, stats } : null,
+  };
+}
+
 export const mlb: Adapter = {
   async schedule(ctx) {
     const season = seasonOf(ctx.now);
@@ -299,5 +370,12 @@ export const mlb: Adapter = {
       return { gameId: n.id, start: n.start, home: n.home, opponent: n.opponent, us: pp(usSide), them: pp(themSide) };
     });
     return { kind: 'probables', matchups };
+  },
+
+  async player(ctx, id) {
+    const d = await ctx.fetchJson(
+      `${API}/people/${id}?hydrate=draft,stats(group=[hitting,pitching],type=[yearByYear])`,
+    );
+    return normalizeMlbPlayer(d, ctx.now);
   },
 };

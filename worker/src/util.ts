@@ -89,3 +89,26 @@ export function scheduleTtl(games: Game[], now = Date.now(), hot = 2 * MINUTE, c
 export function settledValue<T>(r: PromiseSettledResult<T>): T | undefined {
   return r.status === 'fulfilled' ? r.value : undefined;
 }
+
+/** Whole years between an ISO birth date (yyyy-mm-dd) and `now`. */
+export function ageOn(birthDate: string | undefined, now: Date): number | undefined {
+  if (!birthDate) return undefined;
+  const [y, m, d] = birthDate.slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return undefined;
+  let age = now.getUTCFullYear() - y;
+  if (now.getUTCMonth() + 1 < m || (now.getUTCMonth() + 1 === m && now.getUTCDate() < d)) age--;
+  return age;
+}
+
+/** "May 30, 1990" from yyyy-mm-dd, without timezone drift. */
+export function formatBirthDate(birthDate: string | undefined): string | undefined {
+  if (!birthDate) return undefined;
+  const d = new Date(`${birthDate.slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }).format(d);
+}
+
+/** Drops empty values so cards only show facts that exist. */
+export function facts(pairs: [string, string | number | null | undefined][]): { label: string; value: string }[] {
+  return pairs.filter(([, v]) => v != null && v !== '').map(([label, v]) => ({ label, value: String(v) }));
+}

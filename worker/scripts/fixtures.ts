@@ -511,6 +511,101 @@ function nwsHourly(now: Date, venue: string) {
   };
 }
 
+// ---------------- player cards ----------------
+function mlbPerson(id: number) {
+  const roster = mlbRoster().roster.find((r) => r.person.id === id);
+  const pitcher = roster?.position.type === 'Pitcher';
+  return {
+    people: [
+      {
+        id,
+        fullName: roster?.person.fullName ?? 'Zack Wheeler',
+        primaryNumber: roster?.jerseyNumber ?? '45',
+        primaryPosition: pitcher ? { abbreviation: 'P', name: 'Pitcher', type: 'Pitcher' } : { abbreviation: roster?.position.abbreviation ?? 'SS', name: 'Shortstop', type: 'Infielder' },
+        currentAge: 32,
+        birthDate: '1994-06-01',
+        birthCity: 'Athens',
+        birthStateProvince: 'GA',
+        height: `6' 2"`,
+        weight: 200,
+        batSide: { code: 'R' },
+        pitchHand: { code: 'R' },
+        mlbDebutDate: '2016-04-10',
+        drafts: [{ year: 2012, pickRound: '1', pickNumber: 14, school: { name: 'Univ. of Georgia' } }],
+        stats: pitcher
+          ? [{ group: { displayName: 'pitching' }, splits: [
+              { season: '2025', stat: { era: '2.95', wins: 14, losses: 7 } },
+              { season: '2026', team: { id: 143 }, stat: { era: '2.71', wins: 16, losses: 6, strikeOuts: 211, inningsPitched: '192.1', whip: '0.98', saves: 0, gamesPlayed: 31 } },
+            ] }]
+          : [{ group: { displayName: 'hitting' }, splits: [
+              { season: '2026', team: { id: 120 }, stat: { avg: '.250', homeRuns: 5 } },
+              { season: '2026', stat: { avg: '.287', homeRuns: 24, rbi: 81, ops: '.842', hits: 171, stolenBases: 22, obp: '.346', gamesPlayed: 150 } },
+            ] }],
+      },
+    ],
+  };
+}
+
+function nhlLandingPlayer(id: number) {
+  const goalie = id === 9 || id === 10;
+  return {
+    playerId: id,
+    firstName: { default: goalie ? 'Samuel' : 'Travis' },
+    lastName: { default: goalie ? 'Ersson' : 'Konecny' },
+    sweaterNumber: goalie ? 33 : 11,
+    position: goalie ? 'G' : 'R',
+    headshot: `https://assets.nhle.com/mugs/nhl/20262027/PHI/${id}.png`,
+    birthDate: '1997-03-11',
+    birthCity: { default: 'London' },
+    birthCountry: 'CAN',
+    heightInInches: 70,
+    weightInPounds: 175,
+    shootsCatches: goalie ? 'L' : 'R',
+    draftDetails: { year: 2015, round: 1, pickInRound: 24, overallPick: 24, teamAbbrev: 'PHI' },
+    featuredStats: {
+      season: 20252026,
+      regularSeason: {
+        subSeason: goalie
+          ? { gamesPlayed: 51, wins: 27, losses: 17, otLosses: 6, goalsAgainstAvg: 2.7123, savePctg: 0.9031, shutouts: 3 }
+          : { gamesPlayed: 82, goals: 33, assists: 43, points: 76, plusMinus: 7, pim: 26, shots: 245 },
+      },
+    },
+  };
+}
+
+function espnAthlete(path: string, id: string) {
+  const roster = espnRoster(path) as any;
+  const all: any[] = roster.athletes.flatMap((g: any) => g.items ?? [g]);
+  const a = all.find((x) => x.id === id) ?? all[0];
+  return {
+    athlete: {
+      id,
+      displayName: a.fullName,
+      jersey: a.jersey,
+      position: { displayName: path === 'nfl' ? 'Quarterback' : 'Guard', abbreviation: a.position.abbreviation },
+      age: 28,
+      dateOfBirth: '1998-08-07T07:00Z',
+      displayHeight: `6' 1"`,
+      displayWeight: '223 lbs',
+      displayBirthPlace: 'Houston, TX',
+      college: path === 'usa.1' ? undefined : { name: 'Oklahoma' },
+      displayDraft: path === 'nfl' ? '2020: Rd 2, Pk 53 (PHI)' : undefined,
+      displayExperience: '7th Season',
+      citizenship: path === 'usa.1' ? 'Jamaica' : undefined,
+    },
+  };
+}
+
+function espnOverview(path: string) {
+  const byLeague: Record<string, [string, string[], string[]]> = {
+    nfl: ['2026 Regular Season', ['CMP', 'ATT', 'YDS', 'CMP%', 'TD', 'INT', 'RTG'], ['89', '131', '1,043', '67.9', '8', '2', '104.3']],
+    nba: ['2025-26 Regular Season', ['GP', 'PTS', 'REB', 'AST', 'FG%', '3P%'], ['70', '26.3', '3.4', '6.2', '44.8', '37.1']],
+    'usa.1': ['2026 Regular Season', ['APP', 'G', 'A', 'SHOTS', 'SV'], ['29', '0', '0', '0', '94']],
+  };
+  const [title, labels, values] = byLeague[path] ?? byLeague.nfl;
+  return { statistics: { displayName: title, labels, splits: [{ displayName: 'Regular Season', stats: values }, { displayName: 'Career', stats: values }] } };
+}
+
 // ---------------- router ----------------
 export function fixtureRouter(now: Date) {
   return (raw: string): unknown => {
@@ -523,12 +618,16 @@ export function fixtureRouter(now: Date) {
       if (p.endsWith('/standings')) return mlbStandings();
       if (p.includes('/roster')) return mlbRoster();
       if (p.endsWith('/people')) return mlbPeople();
+      const pm = p.match(/\/people\/(\d+)$/);
+      if (pm) return mlbPerson(Number(pm[1]));
     }
     if (url.host === 'api-web.nhle.com') {
       if (p.includes('/club-schedule-season/')) return nhlSchedule(now);
       if (p.includes('/standings/')) return nhlStandings();
       if (p.includes('/roster/')) return nhlRoster();
       if (p.includes('/gamecenter/')) return nhlLanding(now);
+      const pl = p.match(/\/player\/(\d+)\/landing$/);
+      if (pl) return nhlLandingPlayer(Number(pl[1]));
     }
     if (url.host === 'site.api.espn.com') {
       const m = p.match(/sports\/[^/]+\/([^/]+)\//);
@@ -541,6 +640,10 @@ export function fixtureRouter(now: Date) {
         if (path === 'nba') return sixersSchedule(now, q.get('seasontype'));
         if (path === 'usa.1') return unionSchedule(now, q.get('fixture') === 'true');
       }
+    }
+    if (url.host === 'site.web.api.espn.com') {
+      const am = p.match(/sports\/[^/]+\/([^/]+)\/athletes\/(\d+)(\/overview)?$/);
+      if (am) return am[3] ? espnOverview(am[1]) : espnAthlete(am[1], am[2]);
     }
     if (url.host === 'api.weather.gov') {
       const pm = p.match(/^\/points\/([\d.-]+),([\d.-]+)/);

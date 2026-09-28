@@ -1,8 +1,8 @@
 // NHL public API (api-web.nhle.com) -> normalized model.
 // Injury status isn't published by the NHL API, so it's overlaid from ESPN's roster.
-import type { BoxScore, Game, GameStatus, Player, SeasonType, Standing, TeamRef } from '../../../shared/types';
+import type { BoxScore, Game, GameStatus, Player, PlayerProfile, SeasonType, Standing, TeamRef } from '../../../shared/types';
 import type { Ctx } from '../context';
-import { ordinal, sortByStart, txt, uniq } from '../util';
+import { ageOn, facts, formatBirthDate, ordinal, sortByStart, txt, uniq } from '../util';
 import { makeVenue } from '../venues';
 import { espnInjuriesByName, normName } from './espn';
 import type { Adapter } from './types';
@@ -226,6 +226,62 @@ export function normalizeNhlBox(d: any): BoxScore {
   };
 }
 
+const POSITIONS: Record<string, string> = { C: 'Center', L: 'Left Wing', R: 'Right Wing', D: 'Defense', G: 'Goalie' };
+
+/** "20262027" -> "2026-27" */
+function seasonLabel(id: unknown): string | undefined {
+  const s = String(id ?? '');
+  return /^\d{8}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(6)}` : undefined;
+}
+
+export function normalizeNhlPlayer(d: any, now: Date): PlayerProfile {
+  if (!d?.playerId) throw new Error('player not found');
+  const goalie = d.position === 'G';
+  const sub = d.featuredStats?.regularSeason?.subSeason;
+  const stats = sub
+    ? facts(
+        goalie
+          ? [
+              ['GP', sub.gamesPlayed],
+              ['W', sub.wins],
+              ['L', sub.losses],
+              ['OTL', sub.otLosses],
+              ['GAA', sub.goalsAgainstAvg != null ? Number(sub.goalsAgainstAvg).toFixed(2) : undefined],
+              ['SV%', sub.savePctg != null ? Number(sub.savePctg).toFixed(3).replace(/^0/, '') : undefined],
+              ['SO', sub.shutouts],
+            ]
+          : [
+              ['GP', sub.gamesPlayed],
+              ['G', sub.goals],
+              ['A', sub.assists],
+              ['P', sub.points],
+              ['+/-', sub.plusMinus != null ? (sub.plusMinus > 0 ? `+${sub.plusMinus}` : sub.plusMinus) : undefined],
+              ['PIM', sub.pim],
+              ['SOG', sub.shots],
+            ],
+      )
+    : [];
+  const dd = d.draftDetails;
+  const inches = d.heightInInches;
+  return {
+    id: String(d.playerId),
+    team: 'flyers',
+    name: `${txt(d.firstName)} ${txt(d.lastName)}`.trim(),
+    number: d.sweaterNumber != null ? String(d.sweaterNumber) : undefined,
+    position: POSITIONS[d.position] ?? d.position ?? '',
+    headshot: d.headshot,
+    bio: facts([
+      ['Age', ageOn(d.birthDate, now)],
+      [goalie ? 'Catches' : 'Shoots', d.shootsCatches],
+      ['Height', inches ? `${Math.floor(inches / 12)}' ${inches % 12}"` : undefined],
+      ['Weight', d.weightInPounds ? `${d.weightInPounds} lbs` : undefined],
+      ['Born', [formatBirthDate(d.birthDate), [txt(d.birthCity), d.birthCountry].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || undefined],
+      ['Draft', dd?.year ? `${dd.year}, Rd ${dd.round}, #${dd.overallPick} (${dd.teamAbbrev})` : undefined],
+    ]),
+    season: stats.length ? { title: `${seasonLabel(d.featuredStats?.season) ?? 'Latest'} season`, stats } : null,
+  };
+}
+
 export const nhl: Adapter = {
   async schedule(ctx) {
     return normalizeNhlSchedule(await ctx.fetchJson(`${API}/club-schedule-season/${PHI}/${nhlSeason(ctx.now)}`));
@@ -246,6 +302,9 @@ export const nhl: Adapter = {
   },
   async extras() {
     return { kind: 'none' };
+  },
+  async player(ctx, id) {
+    return normalizeNhlPlayer(await ctx.fetchJson(`${API}/player/${id}/landing`), ctx.now);
   },
 };
 

@@ -1,5 +1,10 @@
+import { ChevronRight } from 'lucide-react';
+import { createContext, useContext } from 'react';
 import type { Player } from '../../../../shared/types';
 import { Card, cx } from '../bits';
+
+/** Set by the team page: opens the player card. Rows are plain when it's absent. */
+export const OpenPlayerContext = createContext<((p: Player) => void) | null>(null);
 
 export function injuryTone(status: string): string {
   const s = status.toLowerCase();
@@ -14,8 +19,9 @@ export function InjuryBadge({ status }: { status: string }) {
 }
 
 export function PlayerRow({ p }: { p: Player }) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-2.5">
+  const open = useContext(OpenPlayerContext);
+  const body = (
+    <>
       <span className="tabular flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-line-2 text-xs font-extrabold text-ink-2">{p.number ?? '–'}</span>
       <div className="min-w-0 flex-1">
         <div className="truncate text-[15px] font-semibold">{p.name}</div>
@@ -25,7 +31,18 @@ export function PlayerRow({ p }: { p: Player }) {
         </div>
       </div>
       {p.injury && <InjuryBadge status={p.injury.status} />}
-    </div>
+    </>
+  );
+  if (!open) return <div className="flex items-center gap-3 px-4 py-2.5">{body}</div>;
+  return (
+    <button
+      type="button"
+      onClick={() => open(p)}
+      className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition first:rounded-t-2xl last:rounded-b-2xl hover:bg-ground"
+    >
+      {body}
+      <ChevronRight size={16} className="shrink-0 text-muted" aria-hidden />
+    </button>
   );
 }
 
